@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLS - TCE/TO Manutenção</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f8fafc; padding-bottom:100px; }
+        .header { background: linear-gradient(135deg, #475569, #334155); color: white; padding: 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 28px; font-weight: 800; }
+        .container { padding: 20px; }
+        .btn { background: linear-gradient(135deg, #475569, #334155); color: white; border: none; padding: 20px; border-radius: 15px; font-size: 18px; font-weight: bold; width: 100%; margin: 10px 0; cursor: pointer; }
+        .btn:active { transform: scale(0.98); }
+        .btn-secondary { background: linear-gradient(135deg, #64748b, #475569); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .btn-back { background: #e2e8f0; color: #475569; padding: 12px 20px; border-radius: 10px; font-size: 14px; margin-bottom: 15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; margin: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .ambiente { background: linear-gradient(135deg, #475569, #334155); color: white; padding: 15px; border-radius: 12px; margin: 15px 0; cursor: pointer; display: flex; justify-content: space-between; }
+        .badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+        .equipment { background: #f8fafc; padding: 15px; margin: 8px 0; border-radius: 10px; border-left: 4px solid #475569; cursor: pointer; }
+        .equipment.selected { background: #dbeafe; border-left-color: #0284c7; }
+        .eq-code { font-family: monospace; font-weight: bold; color: #475569; font-size: 13px; }
+        .eq-name { font-size: 13px; margin-top: 5px; color: #64748b; }
+        .section-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+        .section-content.show { max-height: 5000px; }
+        .hidden { display: none; }
+        input, select, textarea { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin: 10px 0; }
+        canvas { border: 2px dashed #cbd5e1; border-radius: 10px; width: 100%; touch-action: none; background: #fafafa; }
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .photo-item { aspect-ratio: 1; position: relative; border-radius: 10px; overflow: hidden; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-item button { position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; }
+        .check-item { background: white; padding: 15px; margin: 8px 0; border-radius: 10px; border: 2px solid #e2e8f0; display: flex; gap: 15px; cursor: pointer; }
+        .check-item.checked { background: #f0f4f8; border-color: #475569; }
+        .checkbox { width: 30px; height: 30px; border: 2px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .checkbox.checked { background: #475569; color: white; font-weight: bold; }
+        .sec-header { background: #475569; color: white; padding: 15px; border-radius: 10px; font-weight: bold; margin: 20px 0 10px; cursor: pointer; display: flex; justify-content: space-between; }
+        .fixed-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 99; }
+        .stats { background: white; padding: 15px; border-radius: 12px; margin: 15px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .stat-num { font-size: 24px; font-weight: bold; color: #475569; }
+        .stat-label { font-size: 11px; color: #64748b; margin-top: 5px; }
+        h2, h3 { margin: 20px 0 10px; color: #334155; }
+        label { font-size: 13px; color: #64748b; font-weight: 600; display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">RLS ENGENHARIA</div>
+        <div style="margin-top:5px; font-size:14px;">TCE/TO - Sistema de Manutenção</div>
+    </div>
+
+    <div class="container">
+        <div id="tela1">
+            <h2>Sistema de Manutenção</h2>
+            <div class="stats">
+                <div><div class="stat-num">408</div><div class="stat-label">EQUIPAMENTOS</div></div>
+                <div><div class="stat-num">169</div><div class="stat-label">AMBIENTES</div></div>
+                <div><div class="stat-num">2</div><div class="stat-label">TÉCNICOS</div></div>
+            </div>
+            <button class="btn" onclick="iniciar('preventiva')">📋 Manutenção Preventiva</button>
+            <button class="btn btn-secondary" onclick="iniciar('corretiva')">🔧 Manutenção Corretiva</button>
+        </div>
+
+        <div id="tela2" class="hidden">
+            <button class="btn btn-back" onclick="voltarMenu()">← Voltar</button>
+            <h2>Selecione Equipamentos</h2>
+            <input type="text" id="search" placeholder="🔍 Buscar..." oninput="filtrar()" style="width:100%; padding:15px; border:2px solid #e2e8f0; border-radius:10px; margin:15px 0;">
+            <div class="stats">
+                <div><div class="stat-num" id="sel">0</div><div class="stat-label">SELECIONADOS</div></div>
+                <div><div class="stat-num">408</div><div class="stat-label">TOTAL</div></div>
+                <div><div class="stat-num" id="amb">0</div><div class="stat-label">AMBIENTES</div></div>
+            </div>
+            <div id="lista"></div>
+            <div class="fixed-bottom">
+                <button class="btn" onclick="avancar()">Avançar (<span id="cont">0</span>)</button>
+            </div>
+        </div>
+
+        <div id="tela3" class="hidden">
+            <button class="btn btn-back" onclick="voltar()">← Voltar</button>
+            <h2>Checklist</h2>
+            
+            <div class="card">
+                <h3>📋 Dados da Manutenção</h3>
+                <label>Tipo:</label>
+                <input type="text" id="tipo-display" readonly style="background:#f1f5f9; font-weight:bold;">
+                <label>Periodicidade:</label>
+                <select id="periodicidade">
+                    <option value="">Selecione...</option>
+                    <option value="Mensal">Mensal</option>
+                    <option value="Bimestral">Bimestral</option>
+                    <option value="Trimestral">Trimestral</option>
+                    <option value="Semestral">Semestral</option>
+                    <option value="Anual">Anual</option>
+                </select>
+                <label>Início:</label>
+                <input type="datetime-local" id="inicio">
+                <label>Fim:</label>
+                <input type="datetime-local" id="fim">
+            </div>
+            
+            <div class="card">
+                <h3>👤 Técnicos Responsáveis</h3>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border-radius:8px; cursor:pointer;">
+                        <input type="checkbox" id="tec1" value="Rafael Dias De Souza" style="width:auto; margin:0;">
+                        <span>Rafael Dias De Souza</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border-radius:8px; cursor:pointer;">
+                        <input type="checkbox" id="tec2" value="Rui Soares Sousa" style="width:auto; margin:0;">
+                        <span>Rui Soares Sousa</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📸 Fotos (<span id="fcount">0</span>)</h3>
+                <input type="file" id="cam" accept="image/*" capture="environment" onchange="addFoto(event)" multiple style="display:none">
+                <button class="btn btn-success" onclick="document.getElementById('cam').click()">📷 Tirar Foto</button>
+                <div id="fotos" class="photo-grid"></div>
+            </div>
+            
+            <div class="card">
+                <h3>☑️ Checklist</h3>
+                <div id="checks"></div>
+            </div>
+            
+            <div class="card">
+                <h3>📝 Observações</h3>
+                <textarea id="obs" rows="4" placeholder="Observações técnicas..."></textarea>
+            </div>
+            
+            <div class="card">
+                <h3>✍️ Assinatura</h3>
+                <canvas id="sig" width="600" height="200"></canvas>
+                <button class="btn btn-secondary" onclick="limparSig()" style="margin-top:10px">Limpar</button>
+            </div>
+            
+            <div style="height:100px"></div>
+            <div class="fixed-bottom">
+                <button class="btn btn-success" onclick="gerarPDF()">🖨️ Gerar Relatório PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+const DADOS = {
+  "TCE/TO - 1° Andar Instituto": {
+    "Hall do 1° Andar": [
+      {id:25,n:"Cassete do VRF LG ARNU24GTAB4",p:"TCE-00025"},
+    ],
+    "Sala 10": [
+      {id:22,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00022"},
+    ],
+    "Sala 11": [
+      {id:23,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00023"},
+    ],
+    "Sala 12": [
+      {id:21,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00021"},
+    ],
+    "Sala 13": [
+      {id:26,n:"Cassete do VRF LG ARNU36GTAB4",p:"TCE-00026"},
+    ],
+    "Sala 14": [
+      {id:27,n:"Cassete do VRF LG ARNU36GTAB4",p:"TCE-00027"},
+    ],
+    "Sala 15": [
+      {id:28,n:"Cassete do VRF LG ARNU24GTAB4",p:"TCE-00028"},
+      {id:29,n:"Cassete do VRF LG ARNU24GTAB4",p:"TCE-00029"},
+    ],
+    "Sala da ASTEC": [
+      {id:24,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00024"},
+    ],
+    "Sala do Rack": [
+      {id:30,n:"Split Hiwall Agratto 18.000 BTUs",p:"TCE-00030"},
+    ],
+  },
+  "TCE/TO - 1° Piso": {
+    "1ª DRCE": [
+      {id:189,n:"Split Daikin de 30.000 BTUs",p:"TCE-00189"},
+      {id:190,n:"Split Daikin de 42.000 BTUs",p:"TCE-00190"},
+      {id:199,n:"Split Carrier de 12.000 BTUs",p:"TCE-00199"},
+    ],
+    "2ª DRCE": [
+      {id:182,n:"Split Daikin de 30.000 BTUs",p:"TCE-00182"},
+      {id:183,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00183"},
+      {id:184,n:"Split Daikin de 30.000 BTUs",p:"TCE-00184"},
+    ],
+    "3ª DRCE": [
+      {id:200,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00200"},
+      {id:201,n:"Split Carrier de 18.000 BTUs",p:"TCE-00201"},
+      {id:202,n:"Split Carrier de 12.000 BTUs",p:"TCE-00202"},
+      {id:203,n:"Split Agratto de 12.000 BTUs",p:"TCE-00203"},
+    ],
+    "4ª DRCE": [
+      {id:186,n:"Split Daikin de 30.000 BTUs",p:"TCE-00186"},
+      {id:187,n:"Split Daikin de 42.000 BTUs",p:"TCE-00187"},
+      {id:188,n:"Split Carrier de 12.000 BTUs",p:"TCE-00188"},
+    ],
+    "5ª DRCE": [
+      {id:192,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00192"},
+      {id:193,n:"Split Agratto de 24.000 BTUs",p:"TCE-00193"},
+      {id:194,n:"Split Agratto de 12.000 BTUs Cassete",p:"TCE-00194"},
+    ],
+    "6ª DRCE": [
+      {id:175,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00175"},
+      {id:176,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00176"},
+      {id:177,n:"Split Carrier de 12.000 BTUs",p:"TCE-00177"},
+    ],
+    "Cadastro Único das Unidades Jurisdicionadas": [
+      {id:191,n:"Split Agratto de 18.000 BTUs",p:"TCE-00191"},
+    ],
+    "Centro de Gerenciamento de Informação Estratégica": [
+      {id:204,n:"Split Agratto 24.000 BTUs",p:"TCE-00204"},
+    ],
+    "Comissão de Integração dos Sistemas": [
+      {id:195,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00195"},
+      {id:196,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00196"},
+      {id:197,n:"Split Daikin de 12.000 BTUs Cassete",p:"TCE-00197"},
+    ],
+    "Coordenadoria de Auditorias Especiais": [
+      {id:178,n:"Split Carrier de 12.000 BTUs",p:"TCE-00178"},
+    ],
+    "Coordenadoria dos Recurso": [
+      {id:185,n:"Split Daikin de 30.000 BTUs",p:"TCE-00185"},
+    ],
+    "Copa 1° Andar Ala Norte": [
+      {id:180,n:"Split Elgin 12.000 BTUs",p:"TCE-00180"},
+    ],
+    "Copa 1° Andar Ala Oeste": [
+      {id:181,n:"Split Elgin 12.000 BTUs",p:"TCE-00181"},
+    ],
+    "Hall do Elevador Ala Norte": [
+      {id:198,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00198"},
+    ],
+    "Hall do Elevador Lado Oeste": [
+      {id:174,n:"Split Daikin 30.000 BTUs Cassete",p:"TCE-00174"},
+    ],
+    "Rack": [
+      {id:179,n:"Split Midea de 18.000 BTUs",p:"TCE-00179"},
+    ],
+  },
+  "TCE/TO - 2° Andar Instituto": {
+    "Hall do 2° Andar": [
+      {id:44,n:"Cassete do VRF LG ARNU24GTAB4",p:"TCE-00044"},
+    ],
+    "Sala 16": [
+      {id:42,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00042"},
+      {id:43,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00043"},
+    ],
+    "Sala 17": [
+      {id:40,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00040"},
+      {id:41,n:"Cassete do VRF LG ARNU42GTAB4",p:"TCE-00041"},
+    ],
+    "Salão de Festa do Instituto": [
+      {id:31,n:"Cassete do VRF Daikin de 4 Via FXFQ140AVM",p:"TCE-00031"},
+      {id:32,n:"Cassete do VRF Daikin de 4 Via FXFQ140AVM",p:"TCE-00032"},
+      {id:35,n:"Cassete do VRF Daikin de 1 Via FXEQ63AVE",p:"TCE-00035"},
+      {id:36,n:"Cassete do VRF Daikin de 1 Via FXEQ63AVE",p:"TCE-00036"},
+      {id:37,n:"Cassete do VRF Daikin de 4 Via FXFQ140AVM",p:"TCE-00037"},
+      {id:38,n:"Cassete do VRF Daikin de 4 Via FXFQ140AVM",p:"TCE-00038"},
+      {id:39,n:"Cassete do VRF Daikin de 4 Via FXFQ140AVM",p:"TCE-00039"},
+    ],
+    "Salão de Festa do Instituto / Corredor da Cozinha": [
+      {id:33,n:"Cassete do VRF Daikin de 1 Via FXEQ63AVE",p:"TCE-00033"},
+    ],
+    "Salão de Festa do Instituto / Cozinha": [
+      {id:34,n:"Cassete do VRF Daikin de 1 Via FXEQ63AVE",p:"TCE-00034"},
+    ],
+  },
+  "TCE/TO - 2° Piso": {
+    "CAENG": [
+      {id:156,n:"Split Agrato de 24.000 BTUs",p:"TCE-00156"},
+      {id:171,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00171"},
+      {id:172,n:"Split Carrier de 22.000 BTUs",p:"TCE-00172"},
+      {id:173,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00173"},
+    ],
+    "Coord. de Analise de Contas e Acomp. da Gestão Fiscal": [
+      {id:166,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00166"},
+      {id:167,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00167"},
+    ],
+    "Coord. de Analise de Contas e Comp. da Gestão - Diretor": [
+      {id:168,n:"Split Carrier de 18.000 BTUs",p:"TCE-00168"},
+    ],
+    "Coord. de Atos Pessoal": [
+      {id:170,n:"Split Agrato de 24.000 BTUs",p:"TCE-00170"},
+    ],
+    "Coordenadoria Administrativa": [
+      {id:160,n:"Split Carrier de 22.000 BTUs",p:"TCE-00160"},
+    ],
+    "Coordenadoria de Contabilidade": [
+      {id:154,n:"Split Carrier de 22.000 BTUs",p:"TCE-00154"},
+    ],
+    "Coordenadoria de Manut. e Transporte": [
+      {id:152,n:"Split Carrier de 22.000 BTUs",p:"TCE-00152"},
+    ],
+    "Coordenadoria de Orçamento e Finanças": [
+      {id:165,n:"Split Daikin de 22.000 BTUs Cassete",p:"TCE-00165"},
+    ],
+    "Copa 2° Andar Ala Norte": [
+      {id:157,n:"Split Elgin 12.000 BTUs",p:"TCE-00157"},
+    ],
+    "Diretoria Geral de Adm. e Finanças": [
+      {id:164,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00164"},
+    ],
+    "Diretoria Geral de Administração e Finanças - Diretor": [
+      {id:162,n:"Split Daikin de 30.000 BTUs",p:"TCE-00162"},
+    ],
+    "Diretoria Geral de Administração e Finanças - Recepção": [
+      {id:161,n:"Split Carrier de 12.000 BTUs",p:"TCE-00161"},
+    ],
+    "Diretoria de Adm. e Finanças - Sala Reunião": [
+      {id:163,n:"Split Carrier de 12.000 BTUs",p:"TCE-00163"},
+    ],
+    "Divisão de Fiscalização de Atos Pessoal": [
+      {id:169,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00169"},
+    ],
+    "Divisão de Registro de Atos de Pessoal": [
+      {id:155,n:"Split Daikin de 30.000 BTUs",p:"TCE-00155"},
+    ],
+    "Equipe de Apoio Coord. de Manut.": [
+      {id:153,n:"Split Carrier de 18.000 BTUs",p:"TCE-00153"},
+    ],
+    "Hall do Elevador Ala Oeste": [
+      {id:151,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00151"},
+      {id:158,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00158"},
+    ],
+    "Sala do Rack": [
+      {id:159,n:"Split Agratto de 12.000 BTUs",p:"TCE-00159"},
+    ],
+  },
+  "TCE/TO - 3° Andar Sede": {
+    "Controle Externo": [
+      {id:148,n:"Split Hiwall Agrato 18.000 BTUs",p:"TCE-00148"},
+      {id:149,n:"Split Hiwall Elgin 24.000 BTUs",p:"TCE-00149"},
+    ],
+    "Diretoria de Controle Externo": [
+      {id:150,n:"Piso Teto Elgin 36.000 BTUs",p:"TCE-00150"},
+    ],
+  },
+  "TCE/TO - 3° Piso": {
+    "Centro de Documentação e Memorial": [
+      {id:135,n:"Split Carrier de 22.000 BTUs",p:"TCE-00135"},
+    ],
+    "Coordenadoria de Apoio Técnico": [
+      {id:136,n:"Split Springer de 24.000 BTUs",p:"TCE-00136"},
+    ],
+    "Coordenadoria de Desenvolvimento e Avaliação Pessoal": [
+      {id:121,n:"Split Carrier de 18.000 BTUs",p:"TCE-00121"},
+      {id:122,n:"Split Carrier de 22.000 BTUs",p:"TCE-00122"},
+    ],
+    "Diretoria Geral de Controle Interno": [
+      {id:123,n:"Split Carrier de 18.000 BTUs",p:"TCE-00123"},
+      {id:124,n:"Split Carrier de 22.000 BTUs",p:"TCE-00124"},
+    ],
+    "Diretoria de Controle Externo": [
+      {id:145,n:"Split York de 24.000 BTUs Piso Teto",p:"TCE-00145"},
+      {id:146,n:"Split Carrier de 18.000 BTUs",p:"TCE-00146"},
+    ],
+    "Diretoria de Controle Externo - Diretor": [
+      {id:147,n:"Split York de 36.000 BTUs Piso Teto",p:"TCE-00147"},
+    ],
+    "Diretoria de Controle Externo - Recepção": [
+      {id:144,n:"Split Carrier de 12.000 BTUs",p:"TCE-00144"},
+    ],
+    "Diretoria de Controle Interno - Diretor": [
+      {id:143,n:"Split Carrier de 22.000 BTUs",p:"TCE-00143"},
+    ],
+    "Diretoria de Controle Interno - Recepção": [
+      {id:142,n:"Split Carrier de 12.000 BTUs",p:"TCE-00142"},
+    ],
+    "Diretoria de Recursos Humano - Recepção": [
+      {id:117,n:"Split Agrato de 12.000 BTUs",p:"TCE-00117"},
+    ],
+    "Diretoria de Recursos Humanos": [
+      {id:119,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00119"},
+      {id:120,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00120"},
+    ],
+    "Diretoria de Recursos Humanos - Chefe": [
+      {id:118,n:"Split Elgin de 12.000 BTUs",p:"TCE-00118"},
+    ],
+    "Hall da Passarela": [
+      {id:137,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00137"},
+    ],
+    "Memorial": [
+      {id:132,n:"Split Daikin de 48.000 BTUs Cassete",p:"TCE-00132"},
+      {id:133,n:"Split Daikin de 48.000 BTUs Cassete",p:"TCE-00133"},
+      {id:134,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00134"},
+    ],
+    "Passarela": [
+      {id:138,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00138"},
+      {id:139,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00139"},
+    ],
+    "Sala Rack": [
+      {id:131,n:"Split Elgin de 12.000 BTUs",p:"TCE-00131"},
+    ],
+    "Serviço Médico": [
+      {id:126,n:"Split Carrier de 18.000 BTUs",p:"TCE-00126"},
+      {id:127,n:"Split Carrier de 22.000 BTUs",p:"TCE-00127"},
+    ],
+    "Serviço Médico - Dentista": [
+      {id:130,n:"Split Carrier de 22.000 BTUs",p:"TCE-00130"},
+    ],
+    "Serviço Médico - Fisioterapia": [
+      {id:140,n:"Split Agrato de 24.000 BTUs",p:"TCE-00140"},
+      {id:141,n:"Split Fujitsu de 18.000 BTUs Cassete",p:"TCE-00141"},
+    ],
+    "Serviço Médico - Psicóloga": [
+      {id:129,n:"Split Carrier de 18.000 BTUs",p:"TCE-00129"},
+    ],
+    "Serviço Médico - Recepção": [
+      {id:125,n:"Split Agrato de 18.000 BTUs",p:"TCE-00125"},
+    ],
+    "Serviço Médico - Sala Marleide": [
+      {id:128,n:"Split Carrier de 18.000 BTUs",p:"TCE-00128"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 1° Piso": {
+    "Controle Interno": [
+      {id:407,n:"Elgin 12.000 BTUs (Desinstalação de Evaporador)",p:"TCE-00407"},
+      {id:408,n:"Split Elgin 12.000 BTUs",p:"TCE-00408"},
+    ],
+    "Coordenação de Desenvolvimento": [
+      {id:390,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00390"},
+      {id:391,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00391"},
+      {id:392,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00392"},
+      {id:393,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00393"},
+    ],
+    "Corredor Central": [
+      {id:385,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00385"},
+      {id:386,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00386"},
+      {id:387,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00387"},
+      {id:388,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00388"},
+    ],
+    "Corregedoria": [
+      {id:394,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00394"},
+      {id:395,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00395"},
+      {id:396,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00396"},
+      {id:397,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00397"},
+    ],
+    "Secretaria do Pleno": [
+      {id:389,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00389"},
+      {id:398,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00398"},
+      {id:399,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00399"},
+      {id:400,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00400"},
+      {id:401,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00401"},
+      {id:402,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00402"},
+      {id:403,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00403"},
+      {id:404,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00404"},
+      {id:405,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00405"},
+      {id:406,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00406"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 2° Piso": {
+    "Assessoria": [
+      {id:376,n:"Split LG Cassete de 48.000 BTUs",p:"TCE-00376"},
+      {id:377,n:"Split LG Cassete de 48.000 BTUs",p:"TCE-00377"},
+      {id:378,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00378"},
+      {id:379,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00379"},
+    ],
+    "Assessoria MP de Contas": [
+      {id:367,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00367"},
+      {id:368,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00368"},
+      {id:369,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00369"},
+      {id:382,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00382"},
+      {id:383,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00383"},
+      {id:384,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00384"},
+    ],
+    "Assessoria de Contas": [
+      {id:361,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00361"},
+    ],
+    "Copa": [
+      {id:356,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00356"},
+      {id:357,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00357"},
+    ],
+    "Corredor": [
+      {id:342,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00342"},
+      {id:343,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00343"},
+      {id:344,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00344"},
+      {id:345,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00345"},
+    ],
+    "Dr. José de Ribamar - Procurador": [
+      {id:362,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00362"},
+      {id:363,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00363"},
+    ],
+    "Gabinete do Procurador": [
+      {id:358,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00358"},
+      {id:359,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00359"},
+      {id:360,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00360"},
+      {id:371,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00371"},
+      {id:372,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00372"},
+      {id:373,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00373"},
+      {id:374,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00374"},
+      {id:375,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00375"},
+    ],
+    "Procurador": [
+      {id:349,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00349"},
+      {id:350,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00350"},
+      {id:351,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00351"},
+      {id:354,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00354"},
+      {id:355,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00355"},
+      {id:364,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00364"},
+      {id:365,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00365"},
+      {id:366,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00366"},
+    ],
+    "Procurador Geral de Contas": [
+      {id:370,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00370"},
+    ],
+    "Procurador de Contas": [
+      {id:380,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00380"},
+      {id:381,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00381"},
+    ],
+    "Procuradoria": [
+      {id:352,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00352"},
+      {id:353,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00353"},
+    ],
+    "Procuradoria de Contas": [
+      {id:346,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00346"},
+      {id:347,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00347"},
+      {id:348,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00348"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 3° Piso": {
+    "Assessoria de Gabinete": [
+      {id:337,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00337"},
+      {id:338,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00338"},
+      {id:339,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00339"},
+      {id:340,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00340"},
+    ],
+    "Corredor": [
+      {id:306,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00306"},
+      {id:307,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00307"},
+      {id:308,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00308"},
+      {id:309,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00309"},
+      {id:310,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00310"},
+    ],
+    "Gabinete Conselheiro": [
+      {id:333,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00333"},
+      {id:334,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00334"},
+      {id:335,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00335"},
+      {id:336,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00336"},
+    ],
+    "Gabinete do Conselheiro": [
+      {id:311,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00311"},
+      {id:312,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00312"},
+      {id:313,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00313"},
+      {id:314,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00314"},
+      {id:315,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00315"},
+      {id:316,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00316"},
+      {id:317,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00317"},
+      {id:318,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00318"},
+      {id:319,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00319"},
+      {id:320,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00320"},
+      {id:321,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00321"},
+      {id:322,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00322"},
+      {id:323,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00323"},
+      {id:325,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00325"},
+      {id:326,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00326"},
+      {id:330,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00330"},
+      {id:331,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00331"},
+      {id:332,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00332"},
+    ],
+    "Sala de Reuniões": [
+      {id:324,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00324"},
+      {id:341,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00341"},
+    ],
+    "Secretaria": [
+      {id:327,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00327"},
+      {id:328,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00328"},
+      {id:329,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00329"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 4° Piso": {
+    "4ª Relatoria": [
+      {id:276,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00276"},
+      {id:288,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00288"},
+      {id:297,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00297"},
+      {id:298,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00298"},
+      {id:299,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00299"},
+      {id:300,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00300"},
+      {id:301,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00301"},
+      {id:302,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00302"},
+      {id:303,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00303"},
+      {id:304,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00304"},
+      {id:305,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00305"},
+    ],
+    "5ª Relatoria": [
+      {id:289,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00289"},
+      {id:290,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00290"},
+      {id:291,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00291"},
+      {id:292,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00292"},
+      {id:293,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00293"},
+      {id:294,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00294"},
+      {id:295,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00295"},
+    ],
+    "Corredor": [
+      {id:277,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00277"},
+    ],
+    "Corredor Central": [
+      {id:283,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00283"},
+      {id:284,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00284"},
+      {id:285,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00285"},
+      {id:286,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00286"},
+    ],
+    "Sala de Reuniões": [
+      {id:274,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00274"},
+      {id:275,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00275"},
+      {id:287,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00287"},
+    ],
+    "Sala do Presidente": [
+      {id:278,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00278"},
+      {id:279,n:"Split LG Cassete de 9.000 BTUs",p:"TCE-00279"},
+      {id:280,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00280"},
+      {id:281,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00281"},
+      {id:282,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00282"},
+      {id:296,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00296"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 5° Piso": {
+    "1ª Relatoria": [
+      {id:257,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00257"},
+      {id:258,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00258"},
+      {id:259,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00259"},
+      {id:260,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00260"},
+      {id:261,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00261"},
+      {id:262,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00262"},
+      {id:263,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00263"},
+    ],
+    "2ª Relatoria": [
+      {id:247,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00247"},
+      {id:248,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00248"},
+      {id:249,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00249"},
+      {id:250,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00250"},
+      {id:251,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00251"},
+      {id:264,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00264"},
+    ],
+    "3ª Relatoria": [
+      {id:256,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00256"},
+      {id:265,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00265"},
+      {id:266,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00266"},
+      {id:267,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00267"},
+      {id:268,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00268"},
+      {id:269,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00269"},
+      {id:270,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00270"},
+      {id:271,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00271"},
+      {id:272,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00272"},
+      {id:273,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00273"},
+    ],
+    "6ª Relatoria": [
+      {id:239,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00239"},
+      {id:240,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00240"},
+      {id:241,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00241"},
+      {id:242,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00242"},
+      {id:243,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00243"},
+      {id:244,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00244"},
+      {id:245,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00245"},
+      {id:246,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00246"},
+    ],
+    "Corredor": [
+      {id:238,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00238"},
+      {id:252,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00252"},
+      {id:253,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00253"},
+      {id:254,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00254"},
+      {id:255,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00255"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - 6° Piso": {
+    "Assessoria": [
+      {id:232,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00232"},
+      {id:233,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00233"},
+      {id:234,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00234"},
+    ],
+    "Assessoria Especial": [
+      {id:220,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00220"},
+    ],
+    "Comunicação": [
+      {id:229,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00229"},
+      {id:230,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00230"},
+      {id:231,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00231"},
+    ],
+    "Copa": [
+      {id:227,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00227"},
+    ],
+    "Corredor": [
+      {id:221,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00221"},
+      {id:222,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00222"},
+      {id:223,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00223"},
+      {id:224,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00224"},
+      {id:225,n:"Split LG Cassete de 7.000 BTUs",p:"TCE-00225"},
+    ],
+    "Gabinete": [
+      {id:235,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00235"},
+    ],
+    "Jurisprudência": [
+      {id:217,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00217"},
+      {id:218,n:"Split LG Cassete de 12.000 BTUs",p:"TCE-00218"},
+    ],
+    "Planejamento": [
+      {id:219,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00219"},
+    ],
+    "Presidente": [
+      {id:236,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00236"},
+      {id:237,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00237"},
+    ],
+    "Sala de Espera": [
+      {id:226,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00226"},
+    ],
+    "Sala de Reuniões": [
+      {id:228,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00228"},
+    ],
+  },
+  "TCE/TO - Rui Barbosa - Térreo": {
+    "Copa do Térreo Ala Norte": [
+      {id:206,n:"Split Elgin 12.000 BTUs",p:"TCE-00206"},
+    ],
+    "Copa do Térreo Ala Oeste": [
+      {id:205,n:"Split Elgin 12.000 BTUs",p:"TCE-00205"},
+    ],
+    "Plenário": [
+      {id:212,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00212"},
+      {id:213,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00213"},
+      {id:214,n:"Split LG Cassete de 36.000 BTUs",p:"TCE-00214"},
+      {id:215,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00215"},
+    ],
+    "Recepção": [
+      {id:207,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00207"},
+      {id:208,n:"Split LG Cassete de 28.000 BTUs",p:"TCE-00208"},
+      {id:209,n:"Split LG Cassete de 18.000 BTUs",p:"TCE-00209"},
+    ],
+    "Sala de Espera Plenário": [
+      {id:210,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00210"},
+      {id:211,n:"Split LG Cassete de 24.000 BTUs",p:"TCE-00211"},
+    ],
+    "Sala de Som Plenário": [
+      {id:216,n:"Split LG Cassete de 15.000 BTUs",p:"TCE-00216"},
+    ],
+  },
+  "TCE/TO - Sub Solo": {
+    "Almoxarifado": [
+      {id:72,n:"Piso Teto Elgin 56.000 BTUs",p:"TCE-00072"},
+      {id:73,n:"Split Agrato 18.000 BTUs",p:"TCE-00073"},
+    ],
+    "Arquivo do Protocolo": [
+      {id:46,n:"Split Elgin de 12.000 BTUs",p:"TCE-00046"},
+      {id:47,n:"Split Midea de 12.000 BTUs Cassete",p:"TCE-00047"},
+      {id:48,n:"Split Midea de 12.000 BTUs",p:"TCE-00048"},
+      {id:49,n:"Split Midea de 12.000 BTUs",p:"TCE-00049"},
+    ],
+    "Auditório": [
+      {id:60,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00060"},
+      {id:61,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00061"},
+      {id:62,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00062"},
+      {id:63,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00063"},
+      {id:64,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00064"},
+      {id:65,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00065"},
+    ],
+    "Nobreak do Subsolo": [
+      {id:69,n:"Split Carrier 18.000 BTUs",p:"TCE-00069"},
+      {id:70,n:"Split Carrier 18.000 BTUs",p:"TCE-00070"},
+      {id:71,n:"Split Agrato 24.000 BTUs",p:"TCE-00071"},
+    ],
+    "Patrimônio": [
+      {id:45,n:"Split Agrato de 24.000 BTUs",p:"TCE-00045"},
+    ],
+    "Recepção do Auditório": [
+      {id:54,n:"Piso Teto Elgin 56.000 BTUs",p:"TCE-00054"},
+      {id:55,n:"Piso Teto Elgin 56.000 BTUs",p:"TCE-00055"},
+      {id:56,n:"Cassete Elgin 48.000 BTUs",p:"TCE-00056"},
+    ],
+    "Refeitório do Subsolo": [
+      {id:67,n:"Split Agrato 18.000 BTUs",p:"TCE-00067"},
+    ],
+    "Sala VIP do Auditório": [
+      {id:57,n:"Split Agrato 24.000 BTUs",p:"TCE-00057"},
+      {id:58,n:"Split Agrato 24.000 BTUs",p:"TCE-00058"},
+      {id:59,n:"Split Elgin 24.000 BTUs",p:"TCE-00059"},
+    ],
+    "Sala de Som do Auditório": [
+      {id:66,n:"Split Elgin de 12.000 BTUs",p:"TCE-00066"},
+    ],
+    "Sala dos Motorista": [
+      {id:50,n:"Split Carrier de 18.000 BTUs",p:"TCE-00050"},
+      {id:52,n:"Split Agrato de 18.000 BTUs",p:"TCE-00052"},
+      {id:53,n:"Split Elgin de 12.000 BTUs",p:"TCE-00053"},
+    ],
+    "Sala dos Motorista Chefe": [
+      {id:51,n:"Split Agrato de 12.000 BTUs",p:"TCE-00051"},
+    ],
+    "Supervisão de Serviços Gerais": [
+      {id:68,n:"Split Midea Live 12.000 BTUs",p:"TCE-00068"},
+    ],
+  },
+  "TCE/TO - Térreo": {
+    "Assessoria Jurídica": [
+      {id:107,n:"Split Carrier de 22.000 BTUs",p:"TCE-00107"},
+    ],
+    "Assistência de Ouvidoria": [
+      {id:94,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00094"},
+      {id:95,n:"Split Carrier de 12.000 BTUs",p:"TCE-00095"},
+      {id:96,n:"Split Agrato de 12.000 BTUs",p:"TCE-00096"},
+    ],
+    "CPD": [
+      {id:85,n:"Split Agrato de 24.000 BTUs",p:"TCE-00085"},
+      {id:86,n:"Split Carrier de 18.000 BTUs",p:"TCE-00086"},
+      {id:87,n:"Split Fujitsu de 24.000 BTUs",p:"TCE-00087"},
+    ],
+    "Coord. de Adm. de Rede Diretor": [
+      {id:83,n:"Split Carrier de 12.000 BTUs",p:"TCE-00083"},
+    ],
+    "Coord. de Adm. de Rede Recepção": [
+      {id:82,n:"Split Carrier de 12.000 BTUs",p:"TCE-00082"},
+    ],
+    "Coord. de Licitações de Contratos e Convênios": [
+      {id:108,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00108"},
+      {id:109,n:"Split Agrato de 18.000 BTUs",p:"TCE-00109"},
+    ],
+    "Coord. de Protocolo Geral": [
+      {id:88,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00088"},
+      {id:105,n:"Split Carrier de 12.000 BTUs",p:"TCE-00105"},
+    ],
+    "Coord. de Protocolo Geral Diretor": [
+      {id:104,n:"Split Carrier de 12.000 BTUs",p:"TCE-00104"},
+    ],
+    "Coord. de Rede": [
+      {id:84,n:"Split Fujitsu de 24.000 BTUs",p:"TCE-00084"},
+    ],
+    "Coord. de Suporte e Atendimento ao Usuário": [
+      {id:115,n:"Split Carrier de 18.000 BTUs",p:"TCE-00115"},
+    ],
+    "Coordenadoria de Cartório de Contas": [
+      {id:99,n:"Split Daikin de 42.000 BTUs Cassete",p:"TCE-00099"},
+      {id:100,n:"Split Carrier de 18.000 BTUs",p:"TCE-00100"},
+      {id:101,n:"Split Carrier de 12.000 BTUs",p:"TCE-00101"},
+      {id:102,n:"Split Daikin de 30.000 BTUs",p:"TCE-00102"},
+    ],
+    "Diretoria de Informática": [
+      {id:112,n:"Split Carrier de 12.000 BTUs",p:"TCE-00112"},
+      {id:113,n:"Split Carrier de 12.000 BTUs",p:"TCE-00113"},
+      {id:116,n:"Split Agrato 12.000 BTUs",p:"TCE-00116"},
+    ],
+    "Diretoria de Informática Diretor": [
+      {id:111,n:"Split Carrier de 12.000 BTUs",p:"TCE-00111"},
+    ],
+    "Divisão de Correspondência e Serviços Postais": [
+      {id:89,n:"Split Agrato de 12.000 BTUs",p:"TCE-00089"},
+      {id:90,n:"Split Carrier de 12.000 BTUs",p:"TCE-00090"},
+      {id:91,n:"Split Carrier de 12.000 BTUs",p:"TCE-00091"},
+    ],
+    "Dossiê": [
+      {id:92,n:"Split Agrato de 18.000 BTUs",p:"TCE-00092"},
+      {id:93,n:"Split Midea de 18.000 BTUs",p:"TCE-00093"},
+    ],
+    "Hall do Elevador Ala Norte": [
+      {id:110,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00110"},
+    ],
+    "Hall do Elevador Ala Oeste": [
+      {id:97,n:"Split Daikin de 30.000 BTUs Cassete",p:"TCE-00097"},
+    ],
+    "Laboratório de Informática": [
+      {id:114,n:"Split Carrier de 18.000 BTUs",p:"TCE-00114"},
+    ],
+    "Protocolo": [
+      {id:106,n:"Split Carrier de 18.000 BTUs",p:"TCE-00106"},
+    ],
+    "Rack do Térreo": [
+      {id:98,n:"Split Carrier de 18.000 BTUs",p:"TCE-00098"},
+    ],
+    "Recepção": [
+      {id:74,n:"Split Carrier de 22.000 BTUs",p:"TCE-00074"},
+      {id:75,n:"Split Carrier de 22.000 BTUs",p:"TCE-00075"},
+      {id:76,n:"Split Carrier de 22.000 BTUs",p:"TCE-00076"},
+      {id:77,n:"Split Agrato de 24.000 BTUs",p:"TCE-00077"},
+      {id:78,n:"Split Agrato de 24.000 BTUs",p:"TCE-00078"},
+      {id:79,n:"Split Carrier de 22.000 BTUs",p:"TCE-00079"},
+      {id:80,n:"Split Carrier de 22.000 BTUs",p:"TCE-00080"},
+      {id:81,n:"Split Carrier de 22.000 BTUs",p:"TCE-00081"},
+    ],
+    "Sala Sem Nome": [
+      {id:103,n:"Split Elgin de 12.000 BTUs",p:"TCE-00103"},
+    ],
+  },
+  "TCE/TO - Térreo do Instituto": {
+    "Coordenadoria de Desenvolvimento Institucional": [
+      {id:15,n:"Cassete do LG VRF 24.000 BTUs",p:"TCE-00015"},
+    ],
+    "Copa do Térreo do Instituto": [
+      {id:8,n:"Hiwall do LG VRF 9.000 BTUs",p:"TCE-00008"},
+    ],
+    "Hall do Térreo do Instituto": [
+      {id:6,n:"Cassete do LG VRF 24.000 BTUs",p:"TCE-00006"},
+    ],
+    "Recepção do Térreo": [
+      {id:7,n:"Cassete do LG VRF 24.000 BTUs",p:"TCE-00007"},
+    ],
+    "Sala Grande da Biblioteca": [
+      {id:3,n:"Cassete do VRF Daikin FXFQ40AVM",p:"TCE-00003"},
+      {id:4,n:"Cassete do VRF Daikin FXFQ80AVM",p:"TCE-00004"},
+      {id:5,n:"Cassete do VRF Daikin FXFQ80AVM",p:"TCE-00005"},
+    ],
+    "Sala da Diretora": [
+      {id:16,n:"Hiwall LG VRF 18.000 BTUs",p:"TCE-00016"},
+    ],
+    "Sala de Biblioteca do Térreo": [
+      {id:1,n:"Cassete do VRF Daikin FXFQ32AVM",p:"TCE-00001"},
+      {id:2,n:"Cassete do VRF Daikin FXFQ32AVM",p:"TCE-00002"},
+      {id:9,n:"Hiwall do LG VRF 12.000 BTUs",p:"TCE-00009"},
+      {id:10,n:"VRF Daikin Cassete FXFQ40AVM",p:"TCE-00010"},
+    ],
+    "Sala de Desenvolvimento Institucional": [
+      {id:12,n:"Cassete do LG VRF ARNU24GTB4",p:"TCE-00012"},
+      {id:13,n:"Cassete do LG VRF 24.000 BTUs",p:"TCE-00013"},
+      {id:14,n:"Cassete do LG VRF 24.000 BTUs",p:"TCE-00014"},
+    ],
+    "Sala de Reunião da Biblioteca": [
+      {id:11,n:"VRF Daikin Cassete FXFQ32AVM",p:"TCE-00011"},
+    ],
+    "Salão Grande da Biblioteca": [
+      {id:17,n:"Cassete do VRF Daikin FXFQ80AVM",p:"TCE-00017"},
+      {id:18,n:"Cassete do VRF Daikin FXFQ80AVM",p:"TCE-00018"},
+    ],
+    "Salão Grande do Instituto": [
+      {id:19,n:"Cassete do VRF Daikin FXFQ40AVM",p:"TCE-00019"},
+      {id:20,n:"Cassete do VRF Daikin FXFQ40AVM",p:"TCE-00020"},
+    ],
+  },
+};
+const checklistPreventiva = {
+    'MENSAL - LIMPEZA E HIGIENIZAÇÃO': [
+        'Limpeza de evaporador',
+        'Limpeza de filtro de ar',
+        'Limpar/lavar ou substituir elemento filtrante',
+        'Lavar serpentinas e bandejas com remoção do biofilme',
+        'Limpar bandeja de condensação e dreno',
+        'Limpar gabinete do condicionador e ventiladores'
+    ],
+    'MENSAL - INSPEÇÕES E VERIFICAÇÕES': [
+        'Verificar ruídos e vibrações anormais',
+        'Medir diferencial de pressão',
+        'Verificar e eliminar frestas dos filtros',
+        'Verificar grades de ventilação/exaustão',
+        'Verificar chave seletora',
+        'Verificar atuação do termostato',
+        'Verificar válvula reversora',
+        'Verificar vedação dos painéis de fechamento'
+    ],
+    'MENSAL - SISTEMA ELÉTRICO': [
+        'Medir e registrar tensão elétrica (alimentação, compressor, motores)',
+        'Medir e registrar corrente elétrica (ventilador/compressor)',
+        'Efetuar reaperto dos terminais, parafusos e molas',
+        'Verificar estado de fiação, terminais e contatos elétricos',
+        'Verificar e calibrar dispositivos de segurança (relés térmicos, fusíveis)'
+    ],
+    'MENSAL - SISTEMA DE REFRIGERAÇÃO': [
+        'Medir e registrar temperatura (ar insuflamento, retorno, ambiente)',
+        'Verificar carga de gás refrigerante e vazamentos',
+        'Verificar operação da válvula de expansão',
+        'Verificar e calibrar pressostatos (alta/baixa e óleo)',
+        'Verificar tensão das correias'
+    ],
+    'TRIMESTRAL - MANUTENÇÃO PREVENTIVA': [
+        'Eliminar danos, sujeiras e corrosão no gabinete',
+        'Eliminar danos e corrosão na moldura da serpentina',
+        'Eliminar danos e corrosão na bandeja'
+    ],
+    'SEMESTRAL - MANUTENÇÃO PREVENTIVA': [
+        'Limpeza completa de condensador',
+        'Verificar operação dos controles de vazão',
+        'Verificar resistência de isolamento (motores e compressores)'
+    ],
+    'ANUAL - MANUTENÇÃO PREVENTIVA': [
+        'Verificar protetor térmico do compressor',
+        'Verificar estado de conservação do isolamento termo-acústico'
+    ]
+};
+
+const checklistCorretiva = {
+    'DIAGNÓSTICO DO PROBLEMA': [
+        'Identificar equipamento com defeito',
+        'Descrever sintomas apresentados',
+        'Identificar causa raiz do problema',
+        'Verificar histórico de manutenções anteriores',
+        'Avaliar necessidade de substituição de componentes'
+    ],
+    'SISTEMA DE COMPRESSÃO': [
+        'Verificar funcionamento do compressor',
+        'Testar circuito elétrico do compressor',
+        'Verificar capacitor de partida',
+        'Verificar capacitor permanente',
+        'Testar relê de partida'
+    ],
+    'SISTEMA DE REFRIGERAÇÃO': [
+        'Localizar e reparar vazamentos',
+        'Realizar vácuo no sistema',
+        'Efetuar recarga de gás refrigerante',
+        'Substituir filtro secador se necessário',
+        'Verificar válvula de expansão',
+        'Realizar teste de pressão'
+    ],
+    'SISTEMA ELÉTRICO E ELETRÔNICO': [
+        'Verificar placa eletrônica',
+        'Testar fiação e conexões',
+        'Verificar sensores de temperatura',
+        'Testar termostato',
+        'Verificar fusíveis e disjuntores'
+    ],
+    'SISTEMA MECÂNICO': [
+        'Verificar ventilador evaporador',
+        'Verificar ventilador condensador',
+        'Substituir rolamentos se necessário',
+        'Verificar estado das hélices',
+        'Verificar tensão e estado das correias'
+    ],
+    'TESTES E VERIFICAÇÃO FINAL': [
+        'Testar funcionamento completo do sistema',
+        'Medir temperaturas de operação',
+        'Verificar pressões de trabalho',
+        'Confirmar ausência de ruídos anormais',
+        'Verificar correta operação de todos os modos',
+        'Preencher relatório técnico completo'
+    ]
+};
+
+let tipo='', sel=[], checks={}, fotos=[], assin='';
+let canvas, ctx, drawing=false;
+let secoesAbertas = new Set(); // Armazena quais seções estão abertas
+
+function iniciar(t) {
+    tipo=t; sel=[]; secoesAbertas.clear();
+    document.getElementById('tela1').classList.add('hidden');
+    document.getElementById('tela2').classList.remove('hidden');
+    renderLista();
+}
+
+function renderLista() {
+    const s = (document.getElementById('search')?.value || '').toLowerCase();
+    let html = '';
+    let totalVisiveis = 0;
+    
+    // Renderizar por LOCALIDADE
+    Object.keys(DADOS).sort().forEach(localidade => {
+        const ambientes = DADOS[localidade];
+        let htmlLocalidade = '';
+        let totalEqsLocalidade = 0;
+        
+        // Renderizar AMBIENTES dentro da localidade
+        Object.keys(ambientes).sort().forEach(ambiente => {
+            const eqs = ambientes[ambiente];
+            
+            // Filtrar equipamentos
+            const eqsFiltrados = eqs.filter(e => 
+                !s || 
+                localidade.toLowerCase().includes(s) || 
+                ambiente.toLowerCase().includes(s) || 
+                e.n.toLowerCase().includes(s) || 
+                e.p.toLowerCase().includes(s)
+            );
+            
+            if (eqsFiltrados.length > 0) {
+                totalEqsLocalidade += eqsFiltrados.length;
+                totalVisiveis += eqsFiltrados.length;
+                
+                // Cabeçalho do AMBIENTE (nível 2) com botão "Todos"
+                const chaveAmb = `${localidade}|||${ambiente}`;
+                htmlLocalidade += `<div class="ambiente" style="margin-left:15px; background:linear-gradient(135deg,#64748b,#475569); display:flex; justify-content:space-between; align-items:center;">`;
+                htmlLocalidade += `<span onclick="toggleAmb('${localidade}','${ambiente}')" style="flex:1; cursor:pointer;">📁 ${ambiente}</span>`;
+                htmlLocalidade += `<button onclick="event.stopPropagation(); selecionarTodosAmb('${chaveAmb}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; margin-right:5px; cursor:pointer;">Todos (${eqsFiltrados.length})</button>`;
+                htmlLocalidade += `<span class="badge">${eqsFiltrados.length}</span></div>`;
+                htmlLocalidade += `<div id="amb-${localidade.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'')}-${ambiente.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'')}" class="section-content">`;
+                
+                // EQUIPAMENTOS
+                eqsFiltrados.forEach(e => {
+                    const cls = sel.includes(e.id) ? 'selected' : '';
+                    htmlLocalidade += `<div class="equipment ${cls}" onclick="toggleEq(${e.id})" style="margin-left:25px;" data-chave-amb="${chaveAmb}">`;
+                    htmlLocalidade += `<div class="eq-code">${e.p}</div>`;
+                    htmlLocalidade += `<div class="eq-name">${e.n}</div>`;
+                    htmlLocalidade += `</div>`;
+                });
+                
+                htmlLocalidade += `</div>`;
+            }
+        });
+        
+        // Se há equipamentos nesta localidade, adicionar cabeçalho da LOCALIDADE (nível 1)
+        if (totalEqsLocalidade > 0) {
+            // Botão "Selecionar Todos" da localidade
+            const chaveLoc = localidade;
+            html += `<div class="ambiente" onclick="toggleLoc('${localidade}')" style="background:linear-gradient(135deg,#1e293b,#334155); margin-top:20px; display:flex; justify-content:space-between; align-items:center;">`;
+            html += `<span style="flex:1;">📍 ${localidade}</span>`;
+            html += `<button onclick="event.stopPropagation(); selecionarTodosLoc('${chaveLoc}')" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; margin-right:8px; cursor:pointer; font-weight:bold;">Todos (${totalEqsLocalidade})</button>`;
+            html += `<span class="badge">${totalEqsLocalidade}</span></div>`;
+            html += `<div id="loc-${localidade.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'')}" class="section-content">`;
+            html += htmlLocalidade;
+            html += `</div>`;
+        }
+    });
+    
+    document.getElementById('lista').innerHTML = html || '<p style="text-align:center; padding:20px; color:#64748b;">Nenhum resultado</p>';
+    
+    // Restaurar estado de expansão
+    secoesAbertas.forEach(chave => {
+        const el = document.getElementById(chave);
+        if (el) el.classList.add('show');
+    });
+    
+    updateStats();
+}
+
+function selecionarTodosAmb(chaveAmb) {
+    // chaveAmb formato: "localidade|||ambiente"
+    const [localidade, ambiente] = chaveAmb.split('|||');
+    const eqs = DADOS[localidade][ambiente];
+    
+    // Verificar se todos já estão selecionados
+    const todosSelec = eqs.every(e => sel.includes(e.id));
+    
+    if (todosSelec) {
+        // Desselecionar todos
+        eqs.forEach(e => {
+            sel = sel.filter(id => id !== e.id);
+        });
+    } else {
+        // Selecionar todos
+        eqs.forEach(e => {
+            if (!sel.includes(e.id)) {
+                sel.push(e.id);
+            }
+        });
+    }
+    
+    renderLista();
+}
+
+function selecionarTodosLoc(localidade) {
+    const ambientes = DADOS[localidade];
+    
+    // Coletar todos os IDs da localidade
+    let todosIds = [];
+    Object.keys(ambientes).forEach(amb => {
+        ambientes[amb].forEach(e => todosIds.push(e.id));
+    });
+    
+    // Verificar se todos já estão selecionados
+    const todosSelec = todosIds.every(id => sel.includes(id));
+    
+    if (todosSelec) {
+        // Desselecionar todos
+        todosIds.forEach(id => {
+            sel = sel.filter(selId => selId !== id);
+        });
+    } else {
+        // Selecionar todos
+        todosIds.forEach(id => {
+            if (!sel.includes(id)) {
+                sel.push(id);
+            }
+        });
+    }
+    
+    renderLista();
+}
+
+function toggleLoc(loc) {
+    const chave = 'loc-' + loc.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'');
+    const el = document.getElementById(chave);
+    if (el) {
+        el.classList.toggle('show');
+        if (el.classList.contains('show')) {
+            secoesAbertas.add(chave);
+        } else {
+            secoesAbertas.delete(chave);
+        }
+    }
+}
+
+function toggleAmb(loc, amb) {
+    const chave = 'amb-' + loc.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'') + '-' + amb.replace(/\s/g,'_').replace(/\//g,'-').replace(/'/g,'');
+    const el = document.getElementById(chave);
+    if (el) {
+        el.classList.toggle('show');
+        if (el.classList.contains('show')) {
+            secoesAbertas.add(chave);
+        } else {
+            secoesAbertas.delete(chave);
+        }
+    }
+}
+
+function toggleEq(id) {
+    sel.includes(id) ? sel=sel.filter(x=>x!==id) : sel.push(id);
+    renderLista();
+}
+
+function updateStats() {
+    document.getElementById('sel').textContent = sel.length;
+    document.getElementById('cont').textContent = sel.length;
+    let ambs = new Set();
+    Object.keys(DADOS).forEach(loc => {
+        Object.keys(DADOS[loc]).forEach(amb => {
+            DADOS[loc][amb].forEach(e => {
+                if(sel.includes(e.id)) ambs.add(`${loc} - ${amb}`);
+            });
+        });
+    });
+    document.getElementById('amb').textContent = ambs.size;
+}
+
+function filtrar() { renderLista(); }
+
+function avancar() {
+    if (sel.length === 0) { alert('Selecione equipamentos!'); return; }
+    document.getElementById('tela2').classList.add('hidden');
+    document.getElementById('tela3').classList.remove('hidden');
+    window.scrollTo(0,0);
+    
+    document.getElementById('tipo-display').value = tipo==='preventiva' ? 'PREVENTIVA' : 'CORRETIVA';
+    document.getElementById('inicio').value = new Date().toISOString().slice(0,16);
+    
+    const data = tipo==='preventiva' ? checklistPreventiva : checklistCorretiva;
+    let html='', idx=0;
+    Object.keys(data).forEach(sec => {
+        html += `<div class="sec-header" onclick="toggleSec('${sec}')"><span>${sec}</span><span id="arr-${sec}">▼</span></div>`;
+        html += `<div id="sec-${sec}" class="section-content">`;
+        data[sec].forEach(item => {
+            const i = idx++;
+            html += `<div class="check-item" onclick="toggleChk(${i})">`;
+            html += `<div class="checkbox" id="box-${i}"></div>`;
+            html += `<div style="flex:1">${item}</div></div>`;
+        });
+        html += `</div>`;
+    });
+    document.getElementById('checks').innerHTML = html;
+    
+    setTimeout(() => {
+        canvas = document.getElementById('sig');
+        if (!canvas) return;
+        ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        canvas.addEventListener('touchstart', startDraw);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDraw);
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+    }, 100);
+}
+
+function toggleSec(s) {
+    const el = document.getElementById('sec-'+s);
+    const arr = document.getElementById('arr-'+s);
+    el.classList.toggle('show');
+    arr.textContent = el.classList.contains('show') ? '▲' : '▼';
+}
+
+function toggleChk(i) {
+    checks[i] = !checks[i];
+    const box = document.getElementById('box-'+i);
+    const item = box.parentElement;
+    if (checks[i]) {
+        item.classList.add('checked');
+        box.classList.add('checked');
+        box.textContent = '✓';
+    } else {
+        item.classList.remove('checked');
+        box.classList.remove('checked');
+        box.textContent = '';
+    }
+}
+
+function getCoords(e) {
+    if (!canvas) return {x:0,y:0};
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches?.[0] || e;
+    return {
+        x: (t.clientX - r.left) * (canvas.width / r.width),
+        y: (t.clientY - r.top) * (canvas.height / r.height)
+    };
+}
+
+function startDraw(e) {
+    if (!ctx) return;
+    e.preventDefault();
+    drawing = true;
+    const {x,y} = getCoords(e);
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+}
+
+function draw(e) {
+    if (!drawing || !ctx) return;
+    e.preventDefault();
+    const {x,y} = getCoords(e);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+}
+
+function stopDraw() {
+    if (!canvas) return;
+    drawing = false;
+    assin = canvas.toDataURL();
+}
+
+function limparSig() {
+    if (!ctx || !canvas) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    assin = '';
+}
+
+function addFoto(e) {
+    Array.from(e.target.files).forEach(file => {
+        const r = new FileReader();
+        r.onload = evt => {
+            fotos.push(evt.target.result);
+            updateFotos();
+        };
+        r.readAsDataURL(file);
+    });
+}
+
+function updateFotos() {
+    document.getElementById('fcount').textContent = fotos.length;
+    document.getElementById('fotos').innerHTML = fotos.map((f,i) =>
+        `<div class="photo-item"><img src="${f}"><button onclick="remFoto(${i})">✕</button></div>`
+    ).join('');
+}
+
+function remFoto(i) {
+    fotos.splice(i,1);
+    updateFotos();
+}
+
+function voltarMenu() {
+    if (confirm('Voltar? Seleção será perdida.')) {
+        sel=[];
+        document.getElementById('tela2').classList.add('hidden');
+        document.getElementById('tela1').classList.remove('hidden');
+    }
+}
+
+function voltar() {
+    if (confirm('Voltar? Checklist será perdido.')) {
+        checks={}; fotos=[]; assin='';
+        document.getElementById('tela3').classList.add('hidden');
+        document.getElementById('tela2').classList.remove('hidden');
+    }
+}
+
+function gerarPDF() {
+    // Coletar técnicos selecionados
+    const tec1 = document.getElementById('tec1').checked ? document.getElementById('tec1').value : '';
+    const tec2 = document.getElementById('tec2').checked ? document.getElementById('tec2').value : '';
+    const tecnicos = [tec1, tec2].filter(t => t);
+    const tecString = tecnicos.join(' e ');
+    
+    const per = document.getElementById('periodicidade').value;
+    const ini = document.getElementById('inicio').value;
+    const fi = document.getElementById('fim').value;
+    const obs = document.getElementById('obs').value;
+    
+    if (tecnicos.length === 0) { alert('❌ Selecione pelo menos um técnico!'); return; }
+    if (!per) { alert('❌ Selecione periodicidade!'); return; }
+    if (!ini) { alert('❌ Informe início!'); return; }
+    if (!fi) { alert('❌ Informe fim!'); return; }
+    if (!assin) { alert('❌ Assine!'); return; }
+    
+    const fmt = (s) => {
+        const d = new Date(s);
+        return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    };
+    
+    const dur = () => {
+        const d1 = new Date(ini);
+        const d2 = new Date(fi);
+        const diff = Math.abs(d2-d1);
+        const h = Math.floor(diff/(1000*60*60));
+        const m = Math.floor((diff%(1000*60*60))/(1000*60));
+        return `${h}h ${m}min`;
+    };
+    
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF();
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    let y = 15;
+    let pag = 1;
+    
+    const rodape = (p) => {
+        const f = ph-15;
+        pdf.setDrawColor(226,232,240);
+        pdf.line(15,f,pw-15,f);
+        pdf.setFontSize(9);
+        pdf.setFont(undefined,'bold');
+        pdf.setTextColor(71,85,105);
+        pdf.text('RLS ENGENHARIA LTDA',pw/2,f+4,{align:'center'});
+        pdf.setFontSize(7);
+        pdf.setFont(undefined,'normal');
+        pdf.setTextColor(148,163,184);
+        pdf.text('CNPJ: 40.468.629/0001-85 | (63) 9298-0475',pw/2,f+8,{align:'center'});
+        pdf.text('Q ARNE 12 ALAMEDA 3, Lote 03 QI A - Plano Diretor Norte - Palmas/TO',pw/2,f+11,{align:'center'});
+        pdf.text(`Relatório Nº RT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)} | Página ${p}`,pw/2,f+14,{align:'center'});
+    };
+    
+    // CABEÇALHO (sem logo - corrigido para mobile)
+    pdf.setFillColor(71,85,105);
+    pdf.rect(0,0,pw,50,'F');
+    
+    pdf.setFontSize(20);
+    pdf.setFont(undefined,'bold');
+    pdf.setTextColor(255,255,255);
+    pdf.text('RLS ENGENHARIA LTDA',15,20);
+    pdf.setFontSize(8);
+    pdf.setFont(undefined,'normal');
+    pdf.text('CNPJ: 40.468.629/0001-85',15,27);
+    pdf.text('(63) 9298-0475',15,31);
+    pdf.text('Q ARNE 12 ALAMEDA 3, Lote 03 QI A',15,35);
+    pdf.text('Plano Diretor Norte - Palmas/TO',15,39);
+    
+    pdf.setFontSize(12);
+    pdf.setFont(undefined,'bold');
+    pdf.text('RELATÓRIO TÉCNICO - TCE/TO',pw-15,22,{align:'right'});
+    pdf.setFontSize(10);
+    pdf.text(tipo.toUpperCase(),pw-15,29,{align:'right'});
+    pdf.setFontSize(14);
+    pdf.setFont(undefined,'bold');
+    pdf.text('RELATÓRIO TÉCNICO - TCE/TO',pw/2,40,{align:'center'});
+    pdf.setFontSize(11);
+    pdf.text(tipo.toUpperCase(),pw/2,46,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    y=57;
+    
+    // DADOS
+    pdf.setFillColor(248,250,252);
+    pdf.rect(15,y,pw-30,45,'F');
+    pdf.setDrawColor(203,213,225);
+    pdf.rect(15,y,pw-30,45);
+    y+=6;
+    pdf.setFontSize(8);
+    pdf.setFont(undefined,'bold');
+    pdf.text('Tipo:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(tipo==='preventiva'?'PREVENTIVA':'CORRETIVA',50,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Periodicidade:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(per,50,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Técnico:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(tecString,50,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Equipamentos:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(`${sel.length}`,50,y);
+    y+=7;
+    pdf.setDrawColor(203,213,225);
+    pdf.line(18,y,pw-18,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Início:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(fmt(ini),50,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Fim:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(fmt(fi),50,y);
+    y+=5;
+    pdf.setFont(undefined,'bold');
+    pdf.text('Duração:',18,y);
+    pdf.setFont(undefined,'normal');
+    pdf.text(dur(),50,y);
+    y+=10;
+    
+    // EQUIPAMENTOS AGRUPADOS POR LOCALIDADE
+    pdf.setFillColor(71,85,105);
+    pdf.rect(15,y,pw-30,7,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('EQUIPAMENTOS POR LOCALIDADE',18,y+5);
+    pdf.setTextColor(0,0,0);
+    y+=12;
+    
+    Object.keys(DADOS).sort().forEach(localidade => {
+        const ambientes = DADOS[localidade];
+        let temEquipamento = false;
+        
+        // Verificar se há equipamentos selecionados nesta localidade
+        Object.keys(ambientes).forEach(ambiente => {
+            const eqs = ambientes[ambiente].filter(e => sel.includes(e.id));
+            if (eqs.length > 0) temEquipamento = true;
+        });
+        
+        if (temEquipamento) {
+            // Cabeçalho da LOCALIDADE
+            if (y>250) { rodape(pag); pdf.addPage(); y=20; pag++; }
+            pdf.setFillColor(71,85,105);
+            pdf.rect(15,y,pw-30,6,'F');
+            pdf.setTextColor(255,255,255);
+            pdf.setFontSize(9);
+            pdf.setFont(undefined,'bold');
+            pdf.text(`${localidade}`,18,y+4);
+            pdf.setTextColor(0,0,0);
+            y+=8;
+            
+            // Ambientes dentro da localidade
+            Object.keys(ambientes).sort().forEach(ambiente => {
+                const eqs = ambientes[ambiente].filter(e => sel.includes(e.id));
+                if (eqs.length > 0) {
+                    if (y>250) { rodape(pag); pdf.addPage(); y=20; pag++; }
+                    pdf.setFillColor(226,232,240);
+                    pdf.rect(15,y,pw-30,5,'F');
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined,'bold');
+                    pdf.text(`  ${ambiente}`,20,y+3.5);
+                    y+=6;
+                    pdf.setFont(undefined,'normal');
+                    pdf.setFontSize(7);
+                    eqs.forEach((e,i) => {
+                        if (y>265) { rodape(pag); pdf.addPage(); y=20; pag++; }
+                        pdf.text(`    ${i+1}. ${e.p} - ${e.n}`,22,y);
+                        y+=4;
+                    });
+                    y+=1;
+                }
+            });
+            y+=2;
+        }
+    });
+    
+    // CHECKLIST
+    y+=5;
+    if (y>240) { rodape(pag); pdf.addPage(); y=20; pag++; }
+    pdf.setFillColor(71,85,105);
+    pdf.rect(15,y,pw-30,7,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('CHECKLIST',18,y+5);
+    pdf.setTextColor(0,0,0);
+    y+=12;
+    
+    const data = tipo==='preventiva' ? checklistPreventiva : checklistCorretiva;
+    let idx=0;
+    const tot = Object.values(data).flat().length;
+    const marc = Object.values(checks).filter(v=>v).length;
+    
+    pdf.setFillColor(248,250,252);
+    pdf.rect(15,y,pw-30,8,'F');
+    pdf.setDrawColor(203,213,225);
+    pdf.rect(15,y,pw-30,8);
+    pdf.setFontSize(9);
+    pdf.setFont(undefined,'bold');
+    pdf.setTextColor(71,85,105);
+    pdf.text(`Itens Executados: ${marc}/${tot}`,pw/2,y+5.5,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    y+=13;
+    
+    Object.keys(data).forEach(sec => {
+        if (y>230) { rodape(pag); pdf.addPage(); y=20; pag++; }
+        pdf.setFillColor(100,116,139);
+        pdf.rect(15,y,pw-30,6,'F');
+        pdf.setTextColor(255,255,255);
+        pdf.setFontSize(8);
+        pdf.setFont(undefined,'bold');
+        pdf.text(sec,18,y+4);
+        pdf.setTextColor(0,0,0);
+        y+=8;
+        pdf.setFontSize(7);
+        pdf.setFont(undefined,'normal');
+        data[sec].forEach(item => {
+            if (y>250) { rodape(pag); pdf.addPage(); y=20; pag++; }
+            const i=idx++;
+            if (checks[i]) {
+                pdf.setFillColor(34,197,94);
+                pdf.circle(18,y-1.5,1.5,'F');
+                pdf.setTextColor(34,197,94);
+                pdf.setFont(undefined,'bold');
+                pdf.text('✓',17.2,y);
+                pdf.setTextColor(0,0,0);
+                pdf.setFont(undefined,'normal');
+            } else {
+                pdf.setDrawColor(203,213,225);
+                pdf.circle(18,y-1.5,1.5);
+            }
+            pdf.text(item,23,y);
+            y+=4;
+        });
+        y+=3;
+    });
+    
+    // FOTOS
+    if (fotos.length>0) {
+        rodape(pag);
+        pdf.addPage();
+        pag++;
+        y=20;
+        pdf.setFillColor(71,85,105);
+        pdf.rect(15,y,pw-30,7,'F');
+        pdf.setTextColor(255,255,255);
+        pdf.setFontSize(10);
+        pdf.setFont(undefined,'bold');
+        pdf.text(`FOTOS (${fotos.length})`,18,y+5);
+        pdf.setTextColor(0,0,0);
+        y+=12;
+        const imgW=85, imgH=64;
+        let x=15, col=0;
+        fotos.forEach((f,i) => {
+            if (col===2) { col=0; x=15; y+=imgH+10; }
+            if (y+imgH>260) { rodape(pag); pdf.addPage(); pag++; y=20; x=15; col=0; }
+            pdf.rect(x,y,imgW,imgH);
+            pdf.addImage(f,'JPEG',x+1,y+1,imgW-2,imgH-2);
+            pdf.setFontSize(7);
+            pdf.text(`Foto ${i+1}`,x+imgW/2,y+imgH+5,{align:'center'});
+            x+=imgW+10;
+            col++;
+        });
+        y+=imgH+15;
+    }
+    
+    // OBS
+    if (y>230 || fotos.length>0) { rodape(pag); pdf.addPage(); pag++; y=20; }
+    pdf.setFillColor(71,85,105);
+    pdf.rect(15,y,pw-30,7,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('OBSERVAÇÕES',18,y+5);
+    pdf.setTextColor(0,0,0);
+    y+=12;
+    pdf.setFillColor(248,250,252);
+    const obsH = obs ? Math.min(40, pdf.splitTextToSize(obs,pw-40).length*5+10) : 20;
+    pdf.rect(15,y,pw-30,obsH,'F');
+    pdf.setFontSize(8);
+    if (obs) {
+        pdf.text(pdf.splitTextToSize(obs,pw-40),20,y+6);
+    } else {
+        pdf.setTextColor(148,163,184);
+        pdf.text('Nenhuma observação.',20,y+6);
+        pdf.setTextColor(0,0,0);
+    }
+    
+    // ASSINATURAS
+    rodape(pag);
+    pdf.addPage();
+    pag++;
+    y=25;
+    pdf.setFillColor(71,85,105);
+    pdf.rect(15,y,pw-30,10,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(14);
+    pdf.setFont(undefined,'bold');
+    pdf.text('ATESTAÇÃO',pw/2,y+7,{align:'center'});
+    pdf.setTextColor(0,0,0);
+    y+=18;
+    
+    pdf.setFillColor(248,250,252);
+    pdf.roundedRect(15,y,pw-30,50,3,3,'F');
+    pdf.setDrawColor(71,85,105);
+    pdf.roundedRect(15,y,pw-30,50,3,3);
+    y+=7;
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('TÉCNICO RESPONSÁVEL',20,y);
+    y+=8;
+    if (assin) {
+        pdf.addImage(assin,'PNG',25,y,70,20);
+        y+=23;
+    } else {
+        y+=25;
+    }
+    pdf.line(25,y,95,y);
+    y+=5;
+    pdf.setFontSize(9);
+    pdf.text(tecString,60,y,{align:'center'});
+    y+=15;
+    
+    pdf.setFillColor(248,250,252);
+    pdf.roundedRect(15,y,pw-30,42,3,3,'F');
+    pdf.setDrawColor(71,85,105);
+    pdf.roundedRect(15,y,pw-30,42,3,3);
+    y+=7;
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('FISCAL DO CONTRATO',20,y);
+    y+=25;
+    pdf.line(25,y,95,y);
+    y+=5;
+    pdf.setFontSize(9);
+    pdf.text('Nome e Assinatura',60,y,{align:'center'});
+    y+=15;
+    
+    pdf.setFillColor(248,250,252);
+    pdf.roundedRect(15,y,pw-30,42,3,3,'F');
+    pdf.setDrawColor(71,85,105);
+    pdf.roundedRect(15,y,pw-30,42,3,3);
+    y+=7;
+    pdf.setFontSize(10);
+    pdf.setFont(undefined,'bold');
+    pdf.text('GESTOR DO CONTRATO',20,y);
+    y+=25;
+    pdf.line(25,y,95,y);
+    y+=5;
+    pdf.setFontSize(9);
+    pdf.text('Nome e Assinatura',60,y,{align:'center'});
+    
+    rodape(pag);
+    
+    pdf.save(`Relatorio_TCE_${tipo}_${new Date().getTime()}.pdf`);
+    alert(`✅ PDF GERADO!\n\n📋 ${marc}/${tot} itens\n📄 ${pag} páginas`);
+}
+    </script>
+</body>
+</html>
